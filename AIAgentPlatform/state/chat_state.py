@@ -1,29 +1,32 @@
-#AIAgentPlatform/state/chat_state.py
 import reflex as rx
-import asyncio
 
 class Message(rx.Base):
-    """채팅 메시지를 위한 데이터 모델"""
     user: str
     text: str
-    
+
 class ChatState(rx.State):
-    """채팅 앱의 서버 사이드 상태"""
+    """채팅 상태를 관리합니다."""
     chat_history: list[Message] = []
+    input_text: str = ""  # Declare as state var here
 
-    async def process_message(self, user_question: str):
-        """사용자 질문을 처리하고 응답을 생성하는 이벤트 핸들러"""
-        if not user_question.strip():
-            return
-
-        # 사용자 메시지를 채팅 기록에 추가
-        self.chat_history.append(Message(user="Human", text=user_question))
+    async def process_message(self, text: str):
+        """메시지를 처리하는 내부 로직"""
+        self.chat_history.append(Message(user="User", text=text))
+        self.input_text = ""  # Clear input after processing
         yield
+        self.chat_history.append(Message(user="AI", text=f"AI가 '{text}'에 응답합니다."))
 
-        # AI 응답 시뮬레이션
-        ai_response = f"'{user_question}'에 대한 AI의 응답입니다."
-        self.chat_history.append(Message(user="AI", text=""))
-        for char in ai_response:
-            self.chat_history[-1].text += char
-            await asyncio.sleep(0.03)
+    async def submit_message(self):
+        if not self.input_text.strip():
+            return
+        return self.process_message(self.input_text)
+
+    def handle_key_down(self, event):
+        if event == "Enter":
+            if not self.input_text.strip():
+                return
+            text = self.input_text
+            self.chat_history.append(Message(user="User", text=text))
+            self.input_text = ""  # Clear input after processing
             yield
+            self.chat_history.append(Message(user="AI", text=f"AI가 '{text}'에 응답합니다."))
